@@ -116,6 +116,10 @@ def data_loader(batch_size):
 
 
 def divide_image(x_image):
+    '''
+    divide images into (INPUT_SIZE, INPUT_SIZE) for training
+    right and bottom side will be zero-padded
+    '''
     xs = list()
 
     pad_width = ((INPUT_SIZE // 2) - (x_image.shape[0] % (INPUT_SIZE // 2))) % (INPUT_SIZE // 2)
@@ -131,6 +135,10 @@ def divide_image(x_image):
 
 
 def merge_image(images, shape):
+    '''
+    merge cropped images into single, original shaped image
+    result is min-max scaled before returned
+    '''
     width = ((INPUT_SIZE // 2) - (shape[0] % (INPUT_SIZE // 2))) % (INPUT_SIZE // 2)
     height = ((INPUT_SIZE // 2) - (shape[1] % (INPUT_SIZE // 2))) % (INPUT_SIZE // 2)
     mask = np.zeros(shape=(shape[0] + width, shape[1] + height, 1))
@@ -146,17 +154,17 @@ def merge_image(images, shape):
 
 
 if __name__ == '__main__':
-    x = tf.placeholder(dtype=tf.float32, shape=[None, INPUT_SIZE, INPUT_SIZE, 3])
-    y = tf.placeholder(dtype=tf.float32, shape=[None, INPUT_SIZE, INPUT_SIZE, 1])
-    is_training = tf.placeholder(dtype=tf.bool, shape=())
-    lr_ph = tf.placeholder(dtype=tf.float32, shape=())
+    x = tf.placeholder(dtype=tf.float32, shape=[None, INPUT_SIZE, INPUT_SIZE, 3])   # RGB channel images
+    y = tf.placeholder(dtype=tf.float32, shape=[None, INPUT_SIZE, INPUT_SIZE, 1])   # binary image output of text / not
+    is_training = tf.placeholder(dtype=tf.bool, shape=())                           # training flag
+    lr_ph = tf.placeholder(dtype=tf.float32, shape=())                              # learning rate
 
     output = segmentation_model(x, is_training)
     out_mask = tf.nn.sigmoid(output)
     
-    focus = 15.0
+    focus = 15.0    # hyperparameter of whether to 'focus' more on false positive or false negative
     mse = tf.losses.mean_squared_error(labels=y, predictions=out_mask, reduction=tf.losses.Reduction.NONE)
-    loss = tf.reduce_mean(tf.multiply(y * (focus - 1.0) + 1.0, mse))
+    loss = tf.reduce_mean(tf.multiply(y * (focus - 1.0) + 1.0, mse))    # if focus is large, loss will be impacted more where the true label is 1 (text area)
 
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=lr_ph)
     update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -173,11 +181,12 @@ if __name__ == '__main__':
     sess = tf.Session()
     sess.run(tf.initializers.global_variables())
 
-    train_count = int(945 * 0.9)
+    train_count = int(945 * 0.9)    # FIXME: hardcoded
 
     best_loss = 1000.
 
     for epoch in range(50):
+        # learning rate tuning (set manually)
         if epoch < 15:
             lr_value = 1e-2
         elif epoch < 40:

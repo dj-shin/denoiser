@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
     images = list()
     for i in range(4):
-        fname = './cut{}.jpg'.format(i + 1)
+        fname = './cut{}.jpg'.format(i + 1)     # test images
         img = tf.read_file(fname)
         img = tf.image.decode_jpeg(img, channels=3)
         img = tf.cast(img, tf.float32)
